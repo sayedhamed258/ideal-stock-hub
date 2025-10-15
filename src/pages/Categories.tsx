@@ -1,0 +1,115 @@
+import { useState, useEffect } from "react";
+import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+
+interface Category {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export default function Categories() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+  });
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .order("name");
+    
+    if (error) {
+      toast.error("Error loading categories");
+      return;
+    }
+    setCategories(data || []);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const { error } = await supabase.from("categories").insert([formData]);
+    
+    if (error) {
+      toast.error("Error adding category");
+      return;
+    }
+    
+    toast.success("Category added successfully!");
+    setIsDialogOpen(false);
+    loadCategories();
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+    });
+  };
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Categories</h1>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Category
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Category</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label>Category Name *</Label>
+                  <Input
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                <Button type="submit" className="w-full">Add Category</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categories.map((category) => (
+            <div key={category.id} className="bg-card p-6 rounded-lg border hover:shadow-md transition-shadow">
+              <h3 className="font-semibold text-lg mb-2">{category.name}</h3>
+              <p className="text-sm text-muted-foreground">{category.description || "No description"}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Layout>
+  );
+}
