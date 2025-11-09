@@ -10,6 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { z } from "zod";
+
+const stockMovementSchema = z.object({
+  product_id: z.string().uuid("Invalid product selected"),
+  movement_type: z.enum(["IN", "OUT"], { errorMap: () => ({ message: "Movement type must be IN or OUT" }) }),
+  quantity: z.number().int("Quantity must be a whole number").positive("Quantity must be greater than 0"),
+  reference: z.string().trim().max(100, "Reference too long").default(""),
+  notes: z.string().trim().max(500, "Notes too long").default("")
+});
 
 interface StockMovement {
   id: string;
@@ -62,7 +71,13 @@ export default function StockMovements() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const { error } = await supabase.from("stock_movements").insert([formData]);
+    const result = stockMovementSchema.safeParse(formData);
+    if (!result.success) {
+      toast.error(result.error.errors[0].message);
+      return;
+    }
+    
+    const { error } = await supabase.from("stock_movements").insert([result.data as any]);
     
     if (error) {
       toast.error("Error adding stock movement");

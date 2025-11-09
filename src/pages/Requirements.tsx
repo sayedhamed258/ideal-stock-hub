@@ -10,6 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
+
+const requirementSchema = z.object({
+  product_id: z.string().uuid("Invalid product selected"),
+  needed_qty: z.number().int("Quantity must be a whole number").positive("Quantity must be greater than 0"),
+  priority: z.enum(["High", "Medium", "Low"], { errorMap: () => ({ message: "Invalid priority level" }) }),
+  status: z.enum(["Open", "Ordered", "Received", "Closed"], { errorMap: () => ({ message: "Invalid status" }) }),
+  notes: z.string().trim().max(500, "Notes too long").default("")
+});
 
 interface Requirement {
   id: string;
@@ -61,7 +71,13 @@ export default function Requirements() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const { error } = await supabase.from("requirements").insert([formData]);
+    const result = requirementSchema.safeParse(formData);
+    if (!result.success) {
+      toast.error(result.error.errors[0].message);
+      return;
+    }
+    
+    const { error } = await supabase.from("requirements").insert([result.data as any]);
     
     if (error) {
       toast.error("Error adding requirement");
@@ -75,9 +91,15 @@ export default function Requirements() {
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
+    const statusResult = z.enum(["Open", "Ordered", "Received", "Closed"]).safeParse(newStatus);
+    if (!statusResult.success) {
+      toast.error("Invalid status value");
+      return;
+    }
+    
     const { error } = await supabase
       .from("requirements")
-      .update({ status: newStatus })
+      .update({ status: statusResult.data })
       .eq("id", id);
     
     if (error) {

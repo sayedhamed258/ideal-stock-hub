@@ -8,6 +8,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const supplierSchema = z.object({
+  name: z.string().trim().min(1, "Supplier name is required").max(200, "Name too long"),
+  phone: z.string().trim().max(20, "Phone number too long").default(""),
+  email: z.string().trim().email("Invalid email address").max(100, "Email too long").or(z.literal("")),
+  address: z.string().trim().max(300, "Address too long").default(""),
+  city: z.string().trim().max(100, "City name too long").default(""),
+  notes: z.string().trim().max(1000, "Notes too long").default("")
+});
 
 interface Supplier {
   id: string;
@@ -51,7 +61,13 @@ export default function Suppliers() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const { error } = await supabase.from("suppliers").insert([formData]);
+    const result = supplierSchema.safeParse(formData);
+    if (!result.success) {
+      toast.error(result.error.errors[0].message);
+      return;
+    }
+    
+    const { error } = await supabase.from("suppliers").insert([result.data as any]);
     
     if (error) {
       toast.error("Error adding supplier");

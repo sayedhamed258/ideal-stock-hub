@@ -8,6 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const categorySchema = z.object({
+  name: z.string().trim().min(1, "Category name is required").max(100, "Name too long"),
+  description: z.string().trim().max(500, "Description too long").default("")
+});
 
 interface Category {
   id: string;
@@ -43,7 +49,13 @@ export default function Categories() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const { error } = await supabase.from("categories").insert([formData]);
+    const result = categorySchema.safeParse(formData);
+    if (!result.success) {
+      toast.error(result.error.errors[0].message);
+      return;
+    }
+    
+    const { error } = await supabase.from("categories").insert([result.data as any]);
     
     if (error) {
       toast.error("Error adding category");

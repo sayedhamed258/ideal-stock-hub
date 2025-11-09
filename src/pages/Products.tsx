@@ -9,6 +9,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { z } from "zod";
+
+const productSchema = z.object({
+  product_id: z.string().trim().min(1, "Product ID is required").max(50, "Product ID too long"),
+  name: z.string().trim().min(1, "Product name is required").max(200, "Name too long"),
+  category_id: z.string().uuid("Invalid category"),
+  supplier_id: z.string().uuid("Invalid supplier"),
+  purchase_price: z.number().min(0, "Purchase price cannot be negative").max(999999.99, "Price too high"),
+  selling_price: z.number().min(0, "Selling price cannot be negative").max(999999.99, "Price too high"),
+  stock_qty: z.number().int("Stock must be a whole number").min(0, "Stock cannot be negative"),
+  min_stock_level: z.number().int("Min stock must be a whole number").min(0, "Min stock cannot be negative"),
+  unit: z.string().trim().max(20, "Unit too long"),
+  barcode: z.string().trim().max(100, "Barcode too long").default(""),
+  notes: z.string().trim().max(1000, "Notes too long").default(""),
+  image_url: z.string().trim().max(500, "Image URL too long").default("")
+});
 
 interface Product {
   id: string;
@@ -84,7 +100,13 @@ export default function Products() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const { error } = await supabase.from("products").insert([formData]);
+    const result = productSchema.safeParse(formData);
+    if (!result.success) {
+      toast.error(result.error.errors[0].message);
+      return;
+    }
+    
+    const { error } = await supabase.from("products").insert([result.data as any]);
     
     if (error) {
       toast.error("Error adding product");
