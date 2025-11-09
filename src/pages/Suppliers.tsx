@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Phone, Mail, MessageSquare } from "lucide-react";
+import { Plus, Phone, Mail, MessageSquare, Edit, Trash2 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { CsvImport } from "@/components/CsvImport";
+import { CsvExport } from "@/components/CsvExport";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -30,6 +33,7 @@ interface Supplier {
 }
 
 export default function Suppliers() {
+  const { canWrite, canDelete } = useUserRole();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -91,18 +95,88 @@ export default function Suppliers() {
     });
   };
 
+  const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      toast.error("You don't have permission to delete suppliers");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete this supplier?")) return;
+    
+    const { error } = await supabase.from("suppliers").delete().eq("id", id);
+    
+    if (error) {
+      toast.error("Error deleting supplier");
+      return;
+    }
+    
+    toast.success("Supplier deleted successfully!");
+    loadSuppliers();
+  };
+
+  const handleImport = async (data: any[]) => {
+    if (!canWrite) {
+      toast.error("You don't have permission to import suppliers");
+      return;
+    }
+
+    const validSuppliers = data.map(row => ({
+      name: row.name || row.supplier_name,
+      phone: row.phone || row.phone_number || "",
+      email: row.email || "",
+      address: row.address || "",
+      city: row.city || "",
+      notes: row.notes || ""
+    })).filter(sup => sup.name);
+
+    if (validSuppliers.length === 0) {
+      toast.error("No valid suppliers found in CSV");
+      return;
+    }
+
+    const { error } = await supabase.from("suppliers").insert(validSuppliers as any);
+    
+    if (error) {
+      toast.error("Error importing suppliers");
+      return;
+    }
+
+    loadSuppliers();
+  };
+
+  const prepareExportData = () => {
+    return suppliers.map(s => ({
+      name: s.name,
+      phone: s.phone,
+      email: s.email,
+      address: s.address,
+      city: s.city,
+      notes: s.notes
+    }));
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-4 flex-wrap">
           <h1 className="text-3xl font-bold">Suppliers</h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Supplier
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2 flex-wrap">
+            <CsvImport 
+              onImport={handleImport} 
+              disabled={!canWrite}
+              acceptedFields={["name"]}
+            />
+            <CsvExport 
+              data={prepareExportData()} 
+              filename="suppliers"
+            />
+            {canWrite && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Supplier
+                  </Button>
+                </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Supplier</DialogTitle>
@@ -158,6 +232,8 @@ export default function Suppliers() {
               </form>
             </DialogContent>
           </Dialog>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -3,6 +3,9 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { CsvImport } from "@/components/CsvImport";
+import { CsvExport } from "@/components/CsvExport";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -22,6 +25,7 @@ interface Category {
 }
 
 export default function Categories() {
+  const { canWrite, canDelete } = useUserRole();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -75,18 +79,80 @@ export default function Categories() {
     });
   };
 
+  const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      toast.error("You don't have permission to delete categories");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    
+    if (error) {
+      toast.error("Error deleting category");
+      return;
+    }
+    
+    toast.success("Category deleted successfully!");
+    loadCategories();
+  };
+
+  const handleImport = async (data: any[]) => {
+    if (!canWrite) {
+      toast.error("You don't have permission to import categories");
+      return;
+    }
+
+    const validCategories = data.map(row => ({
+      name: row.name || row.category_name,
+      description: row.description || ""
+    })).filter(cat => cat.name);
+
+    if (validCategories.length === 0) {
+      toast.error("No valid categories found in CSV");
+      return;
+    }
+
+    const { error } = await supabase.from("categories").insert(validCategories as any);
+    
+    if (error) {
+      toast.error("Error importing categories");
+      return;
+    }
+
+    loadCategories();
+  };
+
+  const prepareExportData = () => {
+    return categories.map(c => ({
+      name: c.name,
+      description: c.description
+    }));
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-4 flex-wrap">
           <h1 className="text-3xl font-bold">Categories</h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Category
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2 flex-wrap">
+            <CsvImport 
+              onImport={handleImport} 
+              disabled={!canWrite}
+              acceptedFields={["name"]}
+            />
+            <CsvExport 
+              data={prepareExportData()} 
+              filename="categories"
+            />
+            {canWrite && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Category
+                  </Button>
+                </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Category</DialogTitle>
@@ -111,6 +177,8 @@ export default function Categories() {
               </form>
             </DialogContent>
           </Dialog>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
