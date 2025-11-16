@@ -61,7 +61,6 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
             variant="outline"
             onClick={handleExport}
             disabled={disabled || data.length === 0}
-            className="border-primary/20 hover:bg-primary/5 hover:border-primary/40"
           >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
