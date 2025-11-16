@@ -12,6 +12,10 @@ interface CsvImportProps {
 
 export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  if (import.meta.env.DEV) {
+    console.log("CsvImport disabled:", disabled);
+  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,6 +91,7 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
       <Button
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled}
+        className="min-w-[120px] disabled:opacity-70"
       >
         <Upload className="w-4 h-4 mr-2" />
         Import CSV
