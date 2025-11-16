@@ -58,7 +58,6 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="outline"
             onClick={handleExport}
             disabled={disabled || data.length === 0}
           >
