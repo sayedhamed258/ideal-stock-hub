@@ -54,9 +54,10 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
 
   return (
     <Button
-      variant="outline"
+      variant="secondary"
       onClick={handleExport}
       disabled={disabled || data.length === 0}
+      className="font-medium"
     >
       <Download className="w-4 h-4 mr-2" />
       Export CSV
