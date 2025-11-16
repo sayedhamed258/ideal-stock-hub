@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import Papa from "papaparse";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CsvExportProps {
   data: any[];
@@ -53,14 +54,23 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
   };
 
   return (
-    <Button
-      variant="secondary"
-      onClick={handleExport}
-      disabled={disabled || data.length === 0}
-      className="font-medium"
-    >
-      <Download className="w-4 h-4 mr-2" />
-      Export CSV
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="secondary"
+            onClick={handleExport}
+            disabled={disabled || data.length === 0}
+            className="font-medium"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{data.length === 0 ? "No records to export" : `Export ${data.length} record${data.length === 1 ? '' : 's'}`}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
