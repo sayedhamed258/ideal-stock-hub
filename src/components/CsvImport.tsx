@@ -88,7 +88,6 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
         variant="outline"
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled}
-        className="border-primary/20 hover:bg-primary/5 hover:border-primary/40"
       >
         <Upload className="w-4 h-4 mr-2" />
         Import CSV
