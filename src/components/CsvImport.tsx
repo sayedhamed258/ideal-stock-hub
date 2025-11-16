@@ -85,7 +85,6 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
         className="hidden"
       />
       <Button
-        variant="outline"
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled}
       >
