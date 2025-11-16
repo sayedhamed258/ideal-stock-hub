@@ -10,6 +10,13 @@ interface CsvExportProps {
 }
 
 export function CsvExport({ data, filename, disabled }: CsvExportProps) {
+  const sanitizeForCSV = (value: any) => {
+    if (typeof value === 'string' && (value.startsWith('=') || value.startsWith('+') || value.startsWith('-') || value.startsWith('@'))) {
+      return "'" + value;
+    }
+    return value;
+  };
+
   const handleExport = () => {
     try {
       if (data.length === 0) {
@@ -17,7 +24,13 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
         return;
       }
 
-      const csv = Papa.unparse(data);
+      const sanitizedData = data.map(row => 
+        Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, sanitizeForCSV(value)])
+        )
+      );
+
+      const csv = Papa.unparse(sanitizedData);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -32,7 +45,9 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
       
       toast.success("Data exported successfully");
     } catch (error) {
-      console.error("Export error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Export error:", error);
+      }
       toast.error("Failed to export data");
     }
   };

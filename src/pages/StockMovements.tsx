@@ -76,11 +76,44 @@ export default function StockMovements() {
       toast.error(result.error.errors[0].message);
       return;
     }
+
+    // Validate OUT movements against available stock
+    if (result.data.movement_type === "OUT") {
+      const { data: product, error: fetchError } = await supabase
+        .from("products")
+        .select("stock_qty, name, min_stock_level")
+        .eq("id", result.data.product_id)
+        .single();
+
+      if (fetchError || !product) {
+        toast.error("Failed to verify stock availability");
+        return;
+      }
+
+      if (result.data.quantity > product.stock_qty) {
+        toast.error(
+          `Cannot remove ${result.data.quantity} units of ${product.name}. Only ${product.stock_qty} units available.`
+        );
+        return;
+      }
+
+      const newStockQty = product.stock_qty - result.data.quantity;
+      if (product.min_stock_level && newStockQty < product.min_stock_level) {
+        const confirmed = window.confirm(
+          `Warning: This will reduce stock to ${newStockQty} units, below the minimum level of ${product.min_stock_level}. Continue?`
+        );
+        if (!confirmed) return;
+      }
+    }
     
     const { error } = await supabase.from("stock_movements").insert([result.data as any]);
     
     if (error) {
-      toast.error("Error adding stock movement");
+      if (error.code === '42501') {
+        toast.error("You do not have permission to add stock movements");
+      } else {
+        toast.error("Error adding stock movement");
+      }
       return;
     }
     

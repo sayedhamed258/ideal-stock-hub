@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { z } from "zod";
+import DOMPurify from "dompurify";
 
 const supplierSchema = z.object({
   name: z.string().trim().min(1, "Supplier name is required").max(200, "Name too long"),
@@ -119,27 +120,48 @@ export default function Suppliers() {
       return;
     }
 
-    const validSuppliers = data.map(row => ({
-      name: row.name || row.supplier_name,
-      phone: row.phone || row.phone_number || "",
-      email: row.email || "",
-      address: row.address || "",
-      city: row.city || "",
-      notes: row.notes || ""
-    })).filter(sup => sup.name);
+    const validSuppliers = [];
+    const errors = [];
+
+    for (const [index, row] of data.entries()) {
+      const supplier = {
+        name: DOMPurify.sanitize(row.name || row.supplier_name || ""),
+        phone: DOMPurify.sanitize(row.phone || row.phone_number || ""),
+        email: DOMPurify.sanitize(row.email || ""),
+        address: DOMPurify.sanitize(row.address || ""),
+        city: DOMPurify.sanitize(row.city || ""),
+        notes: DOMPurify.sanitize(row.notes || "")
+      };
+
+      const result = supplierSchema.safeParse(supplier);
+      if (result.success) {
+        validSuppliers.push(result.data);
+      } else {
+        errors.push(`Row ${index + 1}: ${result.error.errors[0].message}`);
+      }
+    }
 
     if (validSuppliers.length === 0) {
-      toast.error("No valid suppliers found in CSV");
+      toast.error(errors.length > 0 ? `Import failed. First error: ${errors[0]}` : "No valid suppliers found");
       return;
     }
 
     const { error } = await supabase.from("suppliers").insert(validSuppliers as any);
     
     if (error) {
-      toast.error("Error importing suppliers");
+      if (error.code === '42501') {
+        toast.error("You do not have permission to import suppliers");
+      } else {
+        toast.error("Error importing suppliers");
+      }
       return;
     }
 
+    const message = errors.length > 0 
+      ? `Imported ${validSuppliers.length} suppliers (${errors.length} rows skipped)`
+      : `Successfully imported ${validSuppliers.length} suppliers`;
+    
+    toast.success(message);
     loadSuppliers();
   };
 

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
+import DOMPurify from "dompurify";
 
 const productSchema = z.object({
   product_id: z.string().trim().min(1, "Product ID is required").max(50, "Product ID too long"),
@@ -164,38 +165,52 @@ export default function Products() {
     }
 
     const validProducts = [];
-    for (const row of data) {
+    const errors = [];
+
+    for (const [index, row] of data.entries()) {
       try {
         const category = categories.find(c => c.name.toLowerCase() === row.category?.toLowerCase());
         const supplier = suppliers.find(s => s.name.toLowerCase() === row.supplier?.toLowerCase());
 
         if (!category || !supplier) {
-          console.warn(`Skipping row - category or supplier not found:`, row);
+          errors.push(`Row ${index + 1}: Category or supplier not found`);
           continue;
         }
 
         const product = {
-          product_id: row.product_id || row.sku || row.code,
-          name: row.name || row.product_name,
+          product_id: DOMPurify.sanitize(row.product_id || row.sku || row.code),
+          name: DOMPurify.sanitize(row.name || row.product_name),
           category_id: category.id,
           supplier_id: supplier.id,
           purchase_price: parseFloat(row.purchase_price || row.cost || 0),
           selling_price: parseFloat(row.selling_price || row.price || 0),
           stock_qty: parseInt(row.stock_qty || row.stock || row.quantity || 0),
           min_stock_level: parseInt(row.min_stock_level || row.min_stock || 10),
-          unit: row.unit || "pieces",
-          barcode: row.barcode || "",
-          notes: row.notes || row.description || "",
-          image_url: row.image_url || ""
+          unit: DOMPurify.sanitize(row.unit || "pieces"),
+          barcode: DOMPurify.sanitize(row.barcode || ""),
+          notes: DOMPurify.sanitize(row.notes || row.description || ""),
+          image_url: DOMPurify.sanitize(row.image_url || "")
         };
 
         const result = productSchema.safeParse(product);
         if (result.success) {
           validProducts.push(result.data);
+        } else {
+          errors.push(`Row ${index + 1}: ${result.error.errors[0].message}`);
         }
       } catch (error) {
-        console.warn("Error parsing row:", row, error);
+        errors.push(`Row ${index + 1}: Invalid data format`);
       }
+    }
+
+    if (errors.length > 0 && validProducts.length === 0) {
+      toast.error(`Import failed. First error: ${errors[0]}`);
+      return;
+    }
+
+    if (validProducts.length === 0) {
+      toast.error("No valid products to import");
+      return;
     }
 
     if (validProducts.length === 0) {
