@@ -39,7 +39,9 @@ export function useUserRole() {
         setRole(null);
       }
     } catch (error) {
-      console.error("Error loading user role:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error loading user role:", error);
+      }
       setRole(null);
     } finally {
       setLoading(false);

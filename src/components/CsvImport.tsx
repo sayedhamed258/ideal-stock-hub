@@ -17,6 +17,12 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("CSV file too large. Maximum size is 5MB.");
+      return;
+    }
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -24,6 +30,12 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
         try {
           if (results.data.length === 0) {
             toast.error("CSV file is empty");
+            return;
+          }
+
+          // Validate row count (max 1000 rows)
+          if (results.data.length > 1000) {
+            toast.error("CSV has too many rows. Maximum is 1000 rows per import.");
             return;
           }
 
@@ -43,7 +55,9 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
           await onImport(results.data);
           toast.success(`Successfully imported ${results.data.length} records`);
         } catch (error) {
-          console.error("Import error:", error);
+          if (import.meta.env.DEV) {
+            console.error("Import error:", error);
+          }
           toast.error("Failed to import data");
         } finally {
           // Reset file input
@@ -53,7 +67,9 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
         }
       },
       error: (error) => {
-        console.error("CSV parsing error:", error);
+        if (import.meta.env.DEV) {
+          console.error("CSV parsing error:", error);
+        }
         toast.error("Failed to parse CSV file");
       }
     });

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { z } from "zod";
+import DOMPurify from "dompurify";
 
 const categorySchema = z.object({
   name: z.string().trim().min(1, "Category name is required").max(100, "Name too long"),
@@ -103,23 +104,44 @@ export default function Categories() {
       return;
     }
 
-    const validCategories = data.map(row => ({
-      name: row.name || row.category_name,
-      description: row.description || ""
-    })).filter(cat => cat.name);
+    const validCategories = [];
+    const errors = [];
+
+    for (const [index, row] of data.entries()) {
+      const category = {
+        name: DOMPurify.sanitize(row.name || row.category_name || ""),
+        description: DOMPurify.sanitize(row.description || "")
+      };
+
+      const result = categorySchema.safeParse(category);
+      if (result.success) {
+        validCategories.push(result.data);
+      } else {
+        errors.push(`Row ${index + 1}: ${result.error.errors[0].message}`);
+      }
+    }
 
     if (validCategories.length === 0) {
-      toast.error("No valid categories found in CSV");
+      toast.error(errors.length > 0 ? `Import failed. First error: ${errors[0]}` : "No valid categories found");
       return;
     }
 
     const { error } = await supabase.from("categories").insert(validCategories as any);
     
     if (error) {
-      toast.error("Error importing categories");
+      if (error.code === '42501') {
+        toast.error("You do not have permission to import categories");
+      } else {
+        toast.error("Error importing categories");
+      }
       return;
     }
 
+    const message = errors.length > 0 
+      ? `Imported ${validCategories.length} categories (${errors.length} rows skipped)`
+      : `Successfully imported ${validCategories.length} categories`;
+    
+    toast.success(message);
     loadCategories();
   };
 
