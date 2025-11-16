@@ -60,6 +60,7 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
           <Button
             onClick={handleExport}
             disabled={disabled || data.length === 0}
+            className="min-w-[120px] disabled:opacity-70"
           >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
