@@ -59,7 +59,7 @@ export function CsvExport({ data, filename, disabled }: CsvExportProps) {
         <TooltipTrigger asChild>
           <Button
             onClick={handleExport}
-            disabled={disabled || data.length === 0}
+            disabled={disabled}
             className="min-w-[120px] disabled:opacity-70"
           >
             <Download className="w-4 h-4 mr-2" />
