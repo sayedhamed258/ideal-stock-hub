@@ -256,7 +256,8 @@ export default function Products() {
           <h1 className="text-3xl font-bold">Products</h1>
           <div className="flex gap-2 flex-wrap">
             <CsvImport 
-              onImport={handleImport} 
+              onImport={handleImport}
+              disabled={!canWrite}
               acceptedFields={["name", "category", "supplier"]}
             />
             <CsvExport 

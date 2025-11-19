@@ -56,7 +56,17 @@ export default function Auth() {
         toast.success("Account created! Please check your email to verify.");
       }
     } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+      // Use generic error messages to prevent user enumeration
+      if (isLogin) {
+        toast.error("Invalid email or password");
+      } else {
+        toast.error("Unable to create account. Please try again.");
+      }
+      
+      // Log detailed error for debugging in development only
+      if (import.meta.env.DEV) {
+        console.error("Auth error:", error.message);
+      }
     } finally {
       setLoading(false);
     }
