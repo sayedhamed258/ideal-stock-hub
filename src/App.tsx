@@ -12,6 +12,7 @@ import Suppliers from "./pages/Suppliers";
 import StockMovements from "./pages/StockMovements";
 import Requirements from "./pages/Requirements";
 import Reports from "./pages/Reports";
+import AutoImport from "./pages/AutoImport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/stock-movements" element={<ProtectedRoute><StockMovements /></ProtectedRoute>} />
           <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/auto-import" element={<ProtectedRoute><AutoImport /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

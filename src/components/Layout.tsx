@@ -9,6 +9,7 @@ import {
   ArrowUpDown,
   ClipboardList,
   FileText,
+  Sparkles,
   LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/stock-movements", icon: ArrowUpDown, label: "Stock Movements" },
   { href: "/requirements", icon: ClipboardList, label: "Requirements" },
   { href: "/reports", icon: FileText, label: "Reports" },
+  { href: "/auto-import", icon: Sparkles, label: "Smart Import" },
 ];
 
 export const Layout = ({ children }: LayoutProps) => {
