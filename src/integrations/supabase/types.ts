@@ -40,49 +40,73 @@ export type Database = {
           barcode: string | null
           category_id: string | null
           created_at: string | null
+          description: string | null
           id: string
           image_url: string | null
+          in_stock_standard: string | null
+          item_code: string | null
           min_stock_level: number | null
+          mrp_price: number | null
           name: string
           notes: string | null
+          packing_final_price: number | null
+          packing_inner: string | null
           product_id: string
           purchase_price: number
           selling_price: number
+          sr_no: string | null
           stock_qty: number
           supplier_id: string | null
           unit: string | null
+          without_tax_price: number | null
         }
         Insert: {
           barcode?: string | null
           category_id?: string | null
           created_at?: string | null
+          description?: string | null
           id?: string
           image_url?: string | null
+          in_stock_standard?: string | null
+          item_code?: string | null
           min_stock_level?: number | null
+          mrp_price?: number | null
           name: string
           notes?: string | null
+          packing_final_price?: number | null
+          packing_inner?: string | null
           product_id: string
           purchase_price?: number
           selling_price?: number
+          sr_no?: string | null
           stock_qty?: number
           supplier_id?: string | null
           unit?: string | null
+          without_tax_price?: number | null
         }
         Update: {
           barcode?: string | null
           category_id?: string | null
           created_at?: string | null
+          description?: string | null
           id?: string
           image_url?: string | null
+          in_stock_standard?: string | null
+          item_code?: string | null
           min_stock_level?: number | null
+          mrp_price?: number | null
           name?: string
           notes?: string | null
+          packing_final_price?: number | null
+          packing_inner?: string | null
           product_id?: string
           purchase_price?: number
           selling_price?: number
+          sr_no?: string | null
           stock_qty?: number
           supplier_id?: string | null
           unit?: string | null
+          without_tax_price?: number | null
         }
         Relationships: [
           {

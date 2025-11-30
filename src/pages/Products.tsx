@@ -27,7 +27,15 @@ const productSchema = z.object({
   unit: z.string().trim().max(20, "Unit too long"),
   barcode: z.string().trim().max(100, "Barcode too long").default(""),
   notes: z.string().trim().max(1000, "Notes too long").default(""),
-  image_url: z.string().trim().max(500, "Image URL too long").default("")
+  image_url: z.string().trim().max(500, "Image URL too long").default(""),
+  in_stock_standard: z.string().trim().max(50, "In Stock Standard too long").default(""),
+  packing_inner: z.string().trim().max(50, "Packing Inner too long").default(""),
+  packing_final_price: z.number().min(0, "Packing final price cannot be negative").max(999999.99, "Price too high").default(0),
+  without_tax_price: z.number().min(0, "Without tax price cannot be negative").max(999999.99, "Price too high").default(0),
+  mrp_price: z.number().min(0, "MRP price cannot be negative").max(999999.99, "Price too high").default(0),
+  description: z.string().trim().max(1000, "Description too long").default(""),
+  item_code: z.string().trim().max(50, "Item code too long").default(""),
+  sr_no: z.string().trim().max(50, "Sr. No. too long").default("")
 });
 
 interface Product {
@@ -44,6 +52,14 @@ interface Product {
   min_stock_level: number;
   notes: string;
   image_url: string;
+  in_stock_standard?: string;
+  packing_inner?: string;
+  packing_final_price?: number;
+  without_tax_price?: number;
+  mrp_price?: number;
+  description?: string;
+  item_code?: string;
+  sr_no?: string;
   categories: { name: string };
   suppliers: { name: string };
 }
@@ -67,6 +83,14 @@ export default function Products() {
     barcode: "",
     min_stock_level: 10,
     notes: "",
+    in_stock_standard: "",
+    packing_inner: "",
+    packing_final_price: 0,
+    without_tax_price: 0,
+    mrp_price: 0,
+    description: "",
+    item_code: "",
+    sr_no: "",
   });
 
   useEffect(() => {
@@ -137,6 +161,14 @@ export default function Products() {
       barcode: "",
       min_stock_level: 10,
       notes: "",
+      in_stock_standard: "",
+      packing_inner: "",
+      packing_final_price: 0,
+      without_tax_price: 0,
+      mrp_price: 0,
+      description: "",
+      item_code: "",
+      sr_no: "",
     });
   };
 
@@ -188,8 +220,16 @@ export default function Products() {
           min_stock_level: parseInt(row.min_stock_level || row.min_stock || 10),
           unit: DOMPurify.sanitize(row.unit || "pieces"),
           barcode: DOMPurify.sanitize(row.barcode || ""),
-          notes: DOMPurify.sanitize(row.notes || row.description || ""),
-          image_url: DOMPurify.sanitize(row.image_url || "")
+          notes: DOMPurify.sanitize(row.notes || ""),
+          image_url: DOMPurify.sanitize(row.image_url || ""),
+          in_stock_standard: DOMPurify.sanitize(row.in_stock_standard || ""),
+          packing_inner: DOMPurify.sanitize(row.packing_inner || ""),
+          packing_final_price: parseFloat(row.packing_final_price || 0),
+          without_tax_price: parseFloat(row.without_tax_price || 0),
+          mrp_price: parseFloat(row.mrp_price || 0),
+          description: DOMPurify.sanitize(row.description || ""),
+          item_code: DOMPurify.sanitize(row.item_code || ""),
+          sr_no: DOMPurify.sanitize(row.sr_no || "")
         };
 
         const result = productSchema.safeParse(product);
@@ -230,13 +270,21 @@ export default function Products() {
 
   const prepareExportData = () => {
     return products.map(p => ({
+      sr_no: p.sr_no || "",
+      item_code: p.item_code || "",
       product_id: p.product_id,
       name: p.name,
+      description: p.description || "",
       category: p.categories?.name,
       supplier: p.suppliers?.name,
       purchase_price: p.purchase_price,
       selling_price: p.selling_price,
+      without_tax_price: p.without_tax_price || 0,
+      mrp_price: p.mrp_price || 0,
+      packing_final_price: p.packing_final_price || 0,
       stock_qty: p.stock_qty,
+      in_stock_standard: p.in_stock_standard || "",
+      packing_inner: p.packing_inner || "",
       min_stock_level: p.min_stock_level,
       unit: p.unit,
       barcode: p.barcode,
@@ -371,6 +419,68 @@ export default function Products() {
                           onChange={(e) => setFormData({ ...formData, min_stock_level: parseInt(e.target.value) })}
                         />
                       </div>
+                      <div>
+                        <Label>Sr. No.</Label>
+                        <Input
+                          value={formData.sr_no}
+                          onChange={(e) => setFormData({ ...formData, sr_no: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Item Code</Label>
+                        <Input
+                          value={formData.item_code}
+                          onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>In Stock - Standard</Label>
+                        <Input
+                          value={formData.in_stock_standard}
+                          onChange={(e) => setFormData({ ...formData, in_stock_standard: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Packing - Inner</Label>
+                        <Input
+                          value={formData.packing_inner}
+                          onChange={(e) => setFormData({ ...formData, packing_inner: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Without Tax Price</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.without_tax_price}
+                          onChange={(e) => setFormData({ ...formData, without_tax_price: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div>
+                        <Label>MRP Price</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.mrp_price}
+                          onChange={(e) => setFormData({ ...formData, mrp_price: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Packing Final Price</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.packing_final_price}
+                          onChange={(e) => setFormData({ ...formData, packing_final_price: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      />
                     </div>
                     <div>
                       <Label>Notes</Label>
@@ -402,11 +512,14 @@ export default function Products() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="text-left p-4 font-semibold">Sr. No.</th>
+                  <th className="text-left p-4 font-semibold">Item Code</th>
                   <th className="text-left p-4 font-semibold">Product ID</th>
                   <th className="text-left p-4 font-semibold">Name</th>
                   <th className="text-left p-4 font-semibold">Category</th>
                   <th className="text-left p-4 font-semibold">Stock</th>
-                  <th className="text-left p-4 font-semibold">Purchase Price</th>
+                  <th className="text-left p-4 font-semibold">MRP Price</th>
+                  <th className="text-left p-4 font-semibold">Without Tax</th>
                   <th className="text-left p-4 font-semibold">Selling Price</th>
                   <th className="text-left p-4 font-semibold">Supplier</th>
                   {(canWrite || canDelete) && <th className="text-left p-4 font-semibold">Actions</th>}
@@ -415,6 +528,8 @@ export default function Products() {
               <tbody>
                 {filteredProducts.map((product) => (
                   <tr key={product.id} className="border-t hover:bg-muted/30">
+                    <td className="p-4">{product.sr_no || "-"}</td>
+                    <td className="p-4">{product.item_code || "-"}</td>
                     <td className="p-4">{product.product_id}</td>
                     <td className="p-4 font-medium">{product.name}</td>
                     <td className="p-4">{product.categories?.name || "-"}</td>
@@ -423,7 +538,8 @@ export default function Products() {
                         {product.stock_qty} {product.unit}
                       </span>
                     </td>
-                    <td className="p-4">₹{product.purchase_price.toFixed(2)}</td>
+                    <td className="p-4">₹{(product.mrp_price || 0).toFixed(2)}</td>
+                    <td className="p-4">₹{(product.without_tax_price || 0).toFixed(2)}</td>
                     <td className="p-4">₹{product.selling_price.toFixed(2)}</td>
                     <td className="p-4">{product.suppliers?.name || "-"}</td>
                     {(canWrite || canDelete) && (
