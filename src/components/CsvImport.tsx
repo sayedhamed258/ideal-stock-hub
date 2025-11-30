@@ -37,9 +37,9 @@ export function CsvImport({ onImport, disabled, acceptedFields }: CsvImportProps
             return;
           }
 
-          // Validate row count (max 1000 rows)
-          if (results.data.length > 1000) {
-            toast.error("CSV has too many rows. Maximum is 1000 rows per import.");
+          // Validate row count (max 5000 rows)
+          if (results.data.length > 5000) {
+            toast.error("CSV has too many rows. Maximum is 5000 rows per import.");
             return;
           }
 
