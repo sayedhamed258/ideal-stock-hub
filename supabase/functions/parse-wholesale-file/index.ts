@@ -54,25 +54,29 @@ const tryExtractProductsFromCsv = (content: string) => {
   });
 
   const headers = parsed.meta.fields ?? [];
+  console.log("CSV Headers found:", headers);
   if (!headers.length) return [];
 
-  const hName = pickHeader(headers, ["name", "productname", "item", "itemname", "particulars", "description"]);
+  const hName = pickHeader(headers, ["name", "productname", "item", "itemname", "particulars", "description", "product"]);
   if (!hName) return [];
 
-  const hProductId = pickHeader(headers, ["productid", "productcode", "code", "sku", "itemcode", "item_code", "id"]);
+  const hProductId = pickHeader(headers, ["productid", "productcode", "code", "sku", "itemcode", "item_code", "id", "srno", "sr_no", "sno"]);
   const hCategory = pickHeader(headers, ["category", "group", "type"]);
   const hSupplier = pickHeader(headers, ["supplier", "brand", "make", "company"]);
-  const hPurchase = pickHeader(headers, ["purchaseprice", "purchase_price", "rate", "cost", "wholesale", "net"]);
-  const hSelling = pickHeader(headers, ["sellingprice", "selling_price", "saleprice", "price", "retail", "sp"]);
-  const hMrp = pickHeader(headers, ["mrp", "mrpprice", "mrp_price"]);
-  const hWithoutTax = pickHeader(headers, ["withouttaxprice", "without_tax_price", "taxablevalue", "baseprice"]);
-  const hQty = pickHeader(headers, ["qty", "quantity", "stock", "stockqty", "stock_qty", "balance"]);
+  // Extended price header matching
+  const hPurchase = pickHeader(headers, ["purchaseprice", "purchase_price", "rate", "cost", "wholesale", "net", "netrate", "net_rate", "dealerprice", "dealer_price", "dp", "basicrate", "basic_rate", "basicprice", "basic"]);
+  const hSelling = pickHeader(headers, ["sellingprice", "selling_price", "saleprice", "price", "retail", "sp", "retailprice", "retail_price"]);
+  const hMrp = pickHeader(headers, ["mrp", "mrpprice", "mrp_price", "listprice", "list_price", "maximumretailprice"]);
+  const hWithoutTax = pickHeader(headers, ["withouttaxprice", "without_tax_price", "taxablevalue", "baseprice", "taxable", "beforetax", "excltax", "excl_tax", "nettaxable", "net_taxable"]);
+  const hQty = pickHeader(headers, ["qty", "quantity", "stock", "stockqty", "stock_qty", "balance", "available", "instock", "in_stock", "closing", "closingstock", "closing_stock"]);
   const hUnit = pickHeader(headers, ["unit", "uom"]);
   const hBarcode = pickHeader(headers, ["barcode", "ean", "upc"]);
-  const hItemCode = pickHeader(headers, ["itemcode", "item_code", "partno", "part_no"]);
-  const hDesc = pickHeader(headers, ["description", "desc", "details"]);
-  const hPackInner = pickHeader(headers, ["packinginner", "packing_inner", "innerpack", "inner"]);
-  const hPackFinal = pickHeader(headers, ["packingfinalprice", "packing_final_price", "packprice", "packingprice", "finalprice"]);
+  const hItemCode = pickHeader(headers, ["itemcode", "item_code", "partno", "part_no", "articlenumber", "article_no"]);
+  const hDesc = pickHeader(headers, ["description", "desc", "details", "specification", "specs"]);
+  const hPackInner = pickHeader(headers, ["packinginner", "packing_inner", "innerpack", "inner", "packof", "pack_of", "moq", "minqty"]);
+  const hPackFinal = pickHeader(headers, ["packingfinalprice", "packing_final_price", "packprice", "packingprice", "finalprice", "boxprice", "box_price"]);
+
+  console.log("Mapped headers:", { hName, hProductId, hPurchase, hSelling, hMrp, hWithoutTax, hQty, hPackInner, hPackFinal });
 
   const rows = (parsed.data ?? []).filter((r) => r && Object.keys(r).length);
   const products = rows
