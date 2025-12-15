@@ -29,6 +29,13 @@ export default function AutoImport() {
       return;
     }
 
+    // Validate file size (max 500 KB)
+    const maxSize = 500 * 1024; // 500 KB
+    if (file.size > maxSize) {
+      toast.error("File size must be less than 500 KB");
+      return;
+    }
+
     setIsProcessing(true);
     setParsedData([]);
 
