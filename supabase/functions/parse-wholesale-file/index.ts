@@ -1,9 +1,113 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import Papa from "https://esm.sh/papaparse@5.5.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+
+const normalizeHeader = (h: string) => h.toLowerCase().replace(/[\s._\-()]+/g, "");
+
+const pickHeader = (headers: string[], candidates: string[]) => {
+  const normalized = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
+  const wanted = candidates.map(normalizeHeader);
+
+  for (const w of wanted) {
+    const hit = normalized.find((h) => h.norm === w);
+    if (hit) return hit.raw;
+  }
+  for (const w of wanted) {
+    const hit = normalized.find((h) => h.norm.includes(w) || w.includes(h.norm));
+    if (hit) return hit.raw;
+  }
+  return null;
+};
+
+const toNumber = (v: unknown): number | null => {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  const cleaned = s.replace(/[,₹$]/g, "").replace(/\s+/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+};
+
+const toInt = (v: unknown): number | null => {
+  const n = toNumber(v);
+  if (n === null) return null;
+  return Math.trunc(n);
+};
+
+const toText = (v: unknown): string | null => {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+};
+
+const tryExtractProductsFromCsv = (content: string) => {
+  const parsed = Papa.parse<Record<string, unknown>>(content, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: false,
+  });
+
+  const headers = parsed.meta.fields ?? [];
+  if (!headers.length) return [];
+
+  const hName = pickHeader(headers, ["name", "productname", "item", "itemname", "particulars", "description"]);
+  if (!hName) return [];
+
+  const hProductId = pickHeader(headers, ["productid", "productcode", "code", "sku", "itemcode", "item_code", "id"]);
+  const hCategory = pickHeader(headers, ["category", "group", "type"]);
+  const hSupplier = pickHeader(headers, ["supplier", "brand", "make", "company"]);
+  const hPurchase = pickHeader(headers, ["purchaseprice", "purchase_price", "rate", "cost", "wholesale", "net"]);
+  const hSelling = pickHeader(headers, ["sellingprice", "selling_price", "saleprice", "price", "retail", "sp"]);
+  const hMrp = pickHeader(headers, ["mrp", "mrpprice", "mrp_price"]);
+  const hWithoutTax = pickHeader(headers, ["withouttaxprice", "without_tax_price", "taxablevalue", "baseprice"]);
+  const hQty = pickHeader(headers, ["qty", "quantity", "stock", "stockqty", "stock_qty", "balance"]);
+  const hUnit = pickHeader(headers, ["unit", "uom"]);
+  const hBarcode = pickHeader(headers, ["barcode", "ean", "upc"]);
+  const hItemCode = pickHeader(headers, ["itemcode", "item_code", "partno", "part_no"]);
+  const hDesc = pickHeader(headers, ["description", "desc", "details"]);
+  const hPackInner = pickHeader(headers, ["packinginner", "packing_inner", "innerpack", "inner"]);
+  const hPackFinal = pickHeader(headers, ["packingfinalprice", "packing_final_price", "packprice", "packingprice", "finalprice"]);
+
+  const rows = (parsed.data ?? []).filter((r) => r && Object.keys(r).length);
+  const products = rows
+    .map((r) => {
+      const name = toText(r[hName]);
+      if (!name) return null;
+
+      const product: Record<string, unknown> = {
+        name,
+        product_id: hProductId ? toText(r[hProductId]) : null,
+        category: hCategory ? toText(r[hCategory]) : null,
+        supplier: hSupplier ? toText(r[hSupplier]) : null,
+        purchase_price: hPurchase ? toNumber(r[hPurchase]) : null,
+        selling_price: hSelling ? toNumber(r[hSelling]) : null,
+        mrp_price: hMrp ? toNumber(r[hMrp]) : null,
+        without_tax_price: hWithoutTax ? toNumber(r[hWithoutTax]) : null,
+        stock_qty: hQty ? toInt(r[hQty]) : null,
+        unit: hUnit ? toText(r[hUnit]) : null,
+        barcode: hBarcode ? toText(r[hBarcode]) : null,
+        item_code: hItemCode ? toText(r[hItemCode]) : null,
+        description: hDesc ? toText(r[hDesc]) : null,
+        packing_inner: hPackInner ? toText(r[hPackInner]) : null,
+        packing_final_price: hPackFinal ? toText(r[hPackFinal]) : null,
+      };
+
+      // Remove nulls to keep payload small/clean
+      for (const k of Object.keys(product)) {
+        if (product[k] === null) delete product[k];
+      }
+
+      return product;
+    })
+    .filter(Boolean) as Record<string, unknown>[];
+
+  return products;
 };
 
 serve(async (req) => {
@@ -55,6 +159,23 @@ serve(async (req) => {
       const body = await req.json();
       fileContent = body.fileContent;
       fileType = body.fileType || 'csv';
+    }
+
+
+    // Fast-path: for CSV files, parse directly to avoid AI JSON truncation issues
+    if (fileType === 'csv' && fileContent?.trim()) {
+      try {
+        const directProducts = tryExtractProductsFromCsv(fileContent);
+        if (directProducts.length > 0) {
+          console.log(`Extracted ${directProducts.length} products via direct CSV parsing`);
+          return new Response(
+            JSON.stringify({ products: directProducts }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (e) {
+        console.warn('Direct CSV parsing failed, falling back to AI:', e);
+      }
     }
 
     const systemPrompt = `You are a data extraction assistant for an electrical supplies business. Extract ALL product information from wholesale price lists and catalogs.
