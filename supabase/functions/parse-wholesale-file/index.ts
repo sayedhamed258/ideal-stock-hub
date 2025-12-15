@@ -57,7 +57,9 @@ serve(async (req) => {
       fileType = body.fileType || 'csv';
     }
 
-    const systemPrompt = `You are a data extraction assistant for an electrical supplies business. Extract product information from wholesale price lists and catalogs.
+    const systemPrompt = `You are a data extraction assistant for an electrical supplies business. Extract ALL product information from wholesale price lists and catalogs.
+
+CRITICAL: You MUST extract EVERY SINGLE PRODUCT from the file. Do not skip any products. Do not summarize or truncate the list. Extract all products even if there are hundreds of them.
 
 Extract the following fields for each product:
 - name: Product name
@@ -76,7 +78,9 @@ Extract the following fields for each product:
 - packing_inner: Packing information if available
 - packing_final_price: Final packing price if available
 
-Return ONLY a valid JSON array of products. Each product should be an object with the fields above. If a field is not found, omit it or set it to null.
+Return ONLY a valid JSON array with ALL products. Each product should be an object with the fields above. If a field is not found, omit it or set it to null.
+
+IMPORTANT: Extract ALL products from the document. Do not limit or truncate the output.
 
 Example format:
 [
@@ -112,7 +116,7 @@ Example format:
       // Text-based input for CSV
       messages = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Extract product information from this CSV file content:\n\n${fileContent.substring(0, 50000)}` }
+        { role: 'user', content: `Extract ALL product information from this CSV file. Do not skip any products:\n\n${fileContent.substring(0, 200000)}` }
       ];
     }
 
