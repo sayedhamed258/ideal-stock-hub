@@ -95,11 +95,15 @@ export default function AutoImport() {
       // Get existing categories and suppliers to match or create new ones
       const { data: categories } = await supabase.from('categories').select('id, name');
       const { data: suppliers } = await supabase.from('suppliers').select('id, name');
+      const { data: existingProducts } = await supabase.from('products').select('id, name, product_id');
 
       const categoryMap = new Map(categories?.map(c => [c.name.toLowerCase(), c.id]) || []);
       const supplierMap = new Map(suppliers?.map(s => [s.name.toLowerCase(), s.id]) || []);
+      const productNameMap = new Map(existingProducts?.map(p => [p.name.toLowerCase(), p]) || []);
 
       const productsToInsert = [];
+      const productsToUpdate = [];
+      let skippedCount = 0;
 
       for (const product of parsedData) {
         let categoryId = null;
@@ -141,9 +145,8 @@ export default function AutoImport() {
           }
         }
 
-        productsToInsert.push({
+        const productData = {
           name: product.name,
-          product_id: product.product_id || `AUTO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           category_id: categoryId,
           supplier_id: supplierId,
           purchase_price: product.purchase_price || 0,
@@ -157,14 +160,37 @@ export default function AutoImport() {
           without_tax_price: product.without_tax_price,
           packing_inner: product.packing_inner,
           packing_final_price: product.packing_final_price,
-        });
+        };
+
+        // Check if product exists by name
+        const existingProduct = productNameMap.get(product.name.toLowerCase());
+        if (existingProduct) {
+          productsToUpdate.push({ id: existingProduct.id, ...productData });
+        } else {
+          // Generate unique product_id
+          const uniqueId = `AUTO-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+          productsToInsert.push({ ...productData, product_id: uniqueId });
+        }
       }
 
-      const { error } = await supabase.from('products').insert(productsToInsert);
+      // Insert new products
+      if (productsToInsert.length > 0) {
+        const { error: insertError } = await supabase.from('products').insert(productsToInsert);
+        if (insertError) throw insertError;
+      }
 
-      if (error) throw error;
+      // Update existing products
+      for (const product of productsToUpdate) {
+        const { id, ...updateData } = product;
+        const { error: updateError } = await supabase.from('products').update(updateData).eq('id', id);
+        if (updateError) console.error('Error updating product:', updateError);
+      }
 
-      toast.success(`Successfully imported ${productsToInsert.length} products`);
+      const message = [];
+      if (productsToInsert.length > 0) message.push(`${productsToInsert.length} new products added`);
+      if (productsToUpdate.length > 0) message.push(`${productsToUpdate.length} products updated`);
+      
+      toast.success(message.join(', ') || 'Import completed');
       setParsedData([]);
     } catch (error) {
       console.error('Error importing products:', error);
