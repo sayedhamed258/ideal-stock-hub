@@ -7,7 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-
 const normalizeHeader = (h: string) => h.toLowerCase().replace(/[\s._\-()]+/g, "");
 
 const pickHeader = (headers: string[], candidates: string[]) => {
@@ -31,7 +30,7 @@ const toNumber = (v: unknown): number | null => {
   if (!s) return null;
   const cleaned = s.replace(/[,₹$]/g, "").replace(/\s+/g, "");
   const n = Number(cleaned);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
 const toInt = (v: unknown): number | null => {
@@ -46,43 +45,194 @@ const toText = (v: unknown): string | null => {
   return s ? s : null;
 };
 
+// Check if a value looks like a product name (text with letters)
+const looksLikeProductName = (v: unknown): boolean => {
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  if (!s || s.length < 2) return false;
+  // Must contain some letters
+  return /[a-zA-Z]/.test(s);
+};
+
+// Check if a value looks like a price (numeric, possibly with currency symbols)
+const looksLikePrice = (v: unknown): boolean => {
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  if (!s) return false;
+  const cleaned = s.replace(/[,₹$\s]/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) && n > 0 && n < 10000000;
+};
+
+// Detect column types by analyzing sample data
+const detectColumnTypes = (rows: Record<string, unknown>[], headers: string[]) => {
+  const columnStats: Record<string, { textCount: number; priceCount: number; emptyCount: number; samples: string[] }> = {};
+  
+  for (const h of headers) {
+    columnStats[h] = { textCount: 0, priceCount: 0, emptyCount: 0, samples: [] };
+  }
+  
+  // Analyze first 100 rows to detect column types
+  const sampleRows = rows.slice(0, 100);
+  for (const row of sampleRows) {
+    for (const h of headers) {
+      const val = row[h];
+      if (val === null || val === undefined || String(val).trim() === '') {
+        columnStats[h].emptyCount++;
+      } else if (looksLikePrice(val)) {
+        columnStats[h].priceCount++;
+      } else if (looksLikeProductName(val)) {
+        columnStats[h].textCount++;
+        if (columnStats[h].samples.length < 3) {
+          columnStats[h].samples.push(String(val).trim().substring(0, 50));
+        }
+      }
+    }
+  }
+  
+  return columnStats;
+};
+
 const tryExtractProductsFromCsv = (content: string) => {
+  // First, try parsing without header to detect structure
+  const rawParsed = Papa.parse<string[]>(content, {
+    header: false,
+    skipEmptyLines: true,
+    dynamicTyping: false,
+  });
+  
+  const rawData = rawParsed.data ?? [];
+  if (rawData.length < 2) return [];
+  
+  // Find the header row (first row with multiple non-empty text values)
+  let headerRowIndex = 0;
+  for (let i = 0; i < Math.min(10, rawData.length); i++) {
+    const row = rawData[i];
+    const nonEmptyCount = row.filter(v => v && String(v).trim().length > 0).length;
+    const textCount = row.filter(v => v && /[a-zA-Z]/.test(String(v))).length;
+    
+    // If row has at least 3 text values, it's likely the header or data row
+    if (nonEmptyCount >= 3 && textCount >= 2) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+  
+  // Generate headers (use row values if they look like headers, otherwise use column indices)
+  const headerRow = rawData[headerRowIndex];
+  const headers: string[] = headerRow.map((v, idx) => {
+    const val = String(v ?? '').trim();
+    if (val && val.length > 0 && val.length < 50) {
+      return val;
+    }
+    return `Col_${idx}`;
+  });
+  
+  console.log("Detected headers at row", headerRowIndex, ":", headers);
+  
+  // Parse again with headers
   const parsed = Papa.parse<Record<string, unknown>>(content, {
     header: true,
     skipEmptyLines: true,
     dynamicTyping: false,
+    transformHeader: (h, idx) => {
+      // Handle empty or duplicate headers
+      const trimmed = (h ?? '').trim();
+      if (!trimmed || trimmed === '' || trimmed.toLowerCase().startsWith('unnamed')) {
+        return `Col_${idx}`;
+      }
+      return trimmed;
+    }
   });
 
-  const headers = parsed.meta.fields ?? [];
-  console.log("CSV Headers found:", headers);
-  if (!headers.length) return [];
-
-  const hName = pickHeader(headers, ["name", "productname", "item", "itemname", "particulars", "description", "product"]);
-  if (!hName) return [];
-
-  const hProductId = pickHeader(headers, ["productid", "productcode", "code", "sku", "itemcode", "item_code", "id", "srno", "sr_no", "sno"]);
-  const hCategory = pickHeader(headers, ["category", "group", "type"]);
-  const hSupplier = pickHeader(headers, ["supplier", "brand", "make", "company"]);
-  // Extended price header matching
-  const hPurchase = pickHeader(headers, ["purchaseprice", "purchase_price", "rate", "cost", "wholesale", "net", "netrate", "net_rate", "dealerprice", "dealer_price", "dp", "basicrate", "basic_rate", "basicprice", "basic"]);
-  const hSelling = pickHeader(headers, ["sellingprice", "selling_price", "saleprice", "price", "retail", "sp", "retailprice", "retail_price"]);
-  const hMrp = pickHeader(headers, ["mrp", "mrpprice", "mrp_price", "listprice", "list_price", "maximumretailprice"]);
-  const hWithoutTax = pickHeader(headers, ["withouttaxprice", "without_tax_price", "taxablevalue", "baseprice", "taxable", "beforetax", "excltax", "excl_tax", "nettaxable", "net_taxable"]);
-  const hQty = pickHeader(headers, ["qty", "quantity", "stock", "stockqty", "stock_qty", "balance", "available", "instock", "in_stock", "closing", "closingstock", "closing_stock"]);
-  const hUnit = pickHeader(headers, ["unit", "uom"]);
-  const hBarcode = pickHeader(headers, ["barcode", "ean", "upc"]);
-  const hItemCode = pickHeader(headers, ["itemcode", "item_code", "partno", "part_no", "articlenumber", "article_no"]);
-  const hDesc = pickHeader(headers, ["description", "desc", "details", "specification", "specs"]);
-  const hPackInner = pickHeader(headers, ["packinginner", "packing_inner", "innerpack", "inner", "packof", "pack_of", "moq", "minqty"]);
-  const hPackFinal = pickHeader(headers, ["packingfinalprice", "packing_final_price", "packprice", "packingprice", "finalprice", "boxprice", "box_price"]);
-
-  console.log("Mapped headers:", { hName, hProductId, hPurchase, hSelling, hMrp, hWithoutTax, hQty, hPackInner, hPackFinal });
+  const parsedHeaders = parsed.meta.fields ?? [];
+  console.log("CSV Headers found:", parsedHeaders);
+  if (!parsedHeaders.length) return [];
 
   const rows = (parsed.data ?? []).filter((r) => r && Object.keys(r).length);
+  console.log("Total rows parsed:", rows.length);
+  
+  // Detect column types
+  const columnStats = detectColumnTypes(rows, parsedHeaders);
+  console.log("Column analysis:", JSON.stringify(columnStats, null, 2));
+  
+  // Find name column (highest text count that isn't mostly empty)
+  let hName = pickHeader(parsedHeaders, ["name", "productname", "item", "itemname", "particulars", "product", "material", "goods"]);
+  
+  if (!hName) {
+    // Auto-detect: find column with most text values
+    let bestNameCol = null;
+    let bestTextCount = 0;
+    for (const [col, stats] of Object.entries(columnStats)) {
+      const fillRate = (stats.textCount / rows.length) * 100;
+      if (stats.textCount > bestTextCount && fillRate > 30) {
+        bestTextCount = stats.textCount;
+        bestNameCol = col;
+      }
+    }
+    if (bestNameCol) {
+      hName = bestNameCol;
+      console.log("Auto-detected name column:", hName, "samples:", columnStats[hName].samples);
+    }
+  }
+  
+  if (!hName) {
+    console.log("Could not find name column");
+    return [];
+  }
+
+  // Find price columns
+  const priceColumns: string[] = [];
+  for (const [col, stats] of Object.entries(columnStats)) {
+    const priceRate = (stats.priceCount / rows.length) * 100;
+    if (priceRate > 30) {
+      priceColumns.push(col);
+    }
+  }
+  console.log("Detected price columns:", priceColumns);
+
+  const hProductId = pickHeader(parsedHeaders, ["productid", "productcode", "code", "sku", "itemcode", "item_code", "id", "srno", "sr_no", "sno", "sl", "slno"]);
+  const hCategory = pickHeader(parsedHeaders, ["category", "group", "type"]);
+  const hSupplier = pickHeader(parsedHeaders, ["supplier", "brand", "make", "company"]);
+  
+  // Try standard header matching first, then fall back to detected price columns
+  let hPurchase = pickHeader(parsedHeaders, ["purchaseprice", "purchase_price", "rate", "cost", "wholesale", "net", "netrate", "net_rate", "dealerprice", "dealer_price", "dp", "basicrate", "basic_rate", "basicprice", "basic", "dlp"]);
+  let hSelling = pickHeader(parsedHeaders, ["sellingprice", "selling_price", "saleprice", "price", "retail", "sp", "retailprice", "retail_price"]);
+  let hMrp = pickHeader(parsedHeaders, ["mrp", "mrpprice", "mrp_price", "listprice", "list_price", "maximumretailprice"]);
+  let hWithoutTax = pickHeader(parsedHeaders, ["withouttaxprice", "without_tax_price", "taxablevalue", "baseprice", "taxable", "beforetax", "excltax", "excl_tax", "nettaxable", "net_taxable"]);
+  
+  // If no price columns found via header matching, use auto-detected price columns
+  if (!hPurchase && !hSelling && !hMrp && priceColumns.length > 0) {
+    // Assign first detected price column as purchase/selling price
+    hSelling = priceColumns[0];
+    if (priceColumns.length > 1) {
+      hMrp = priceColumns[1];
+    }
+    console.log("Using auto-detected price columns - Selling:", hSelling, "MRP:", hMrp);
+  }
+  
+  const hQty = pickHeader(parsedHeaders, ["qty", "quantity", "stock", "stockqty", "stock_qty", "balance", "available", "instock", "in_stock", "closing", "closingstock", "closing_stock"]);
+  const hUnit = pickHeader(parsedHeaders, ["unit", "uom"]);
+  const hBarcode = pickHeader(parsedHeaders, ["barcode", "ean", "upc"]);
+  const hItemCode = pickHeader(parsedHeaders, ["itemcode", "item_code", "partno", "part_no", "articlenumber", "article_no"]);
+  const hDesc = pickHeader(parsedHeaders, ["description", "desc", "details", "specification", "specs"]);
+  const hPackInner = pickHeader(parsedHeaders, ["packinginner", "packing_inner", "innerpack", "inner", "packof", "pack_of", "moq", "minqty", "packing"]);
+  const hPackFinal = pickHeader(parsedHeaders, ["packingfinalprice", "packing_final_price", "packprice", "packingprice", "finalprice", "boxprice", "box_price"]);
+
+  console.log("Final mapped headers:", { hName, hProductId, hPurchase, hSelling, hMrp, hWithoutTax, hQty, hPackInner, hPackFinal });
+
   const products = rows
     .map((r) => {
-      const name = toText(r[hName]);
-      if (!name) return null;
+      const name = toText(r[hName!]);
+      if (!name || name.length < 2) return null;
+      
+      // Skip rows that look like headers or totals
+      const nameLower = name.toLowerCase();
+      if (nameLower.includes('total') || nameLower.includes('grand total') || 
+          nameLower === 'name' || nameLower === 'product name' || nameLower === 'item' ||
+          nameLower === 'particulars' || nameLower === 'description') {
+        return null;
+      }
 
       const product: Record<string, unknown> = {
         name,
