@@ -154,12 +154,19 @@ Example format:
     // Parse the JSON response
     let products = [];
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+      // Remove markdown code fences if present
+      let cleanedResponse = aiResponse
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      
+      // Try to extract JSON array from the response
+      const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         products = JSON.parse(jsonMatch[0]);
       } else {
-        products = JSON.parse(aiResponse);
+        products = JSON.parse(cleanedResponse);
       }
     } catch (e) {
       console.error('Failed to parse AI response:', aiResponse);
