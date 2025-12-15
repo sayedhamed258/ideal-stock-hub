@@ -20,9 +20,10 @@ serve(async (req) => {
     const contentType = req.headers.get('content-type') || '';
     let fileContent = '';
     let fileType = 'csv';
+    let fileBase64 = '';
+    let fileMimeType = '';
 
     if (contentType.includes('multipart/form-data')) {
-      // Handle PDF upload
       const formData = await req.formData();
       const file = formData.get('file') as File;
       
@@ -30,11 +31,25 @@ serve(async (req) => {
         throw new Error('No file uploaded');
       }
 
-      // Read PDF as text (simplified - in production you'd use a proper PDF parser)
+      const fileName = file.name.toLowerCase();
       const arrayBuffer = await file.arrayBuffer();
-      const textDecoder = new TextDecoder();
-      fileContent = textDecoder.decode(arrayBuffer);
-      fileType = 'pdf';
+      
+      if (fileName.endsWith('.pdf')) {
+        // For PDFs, convert to base64 for multimodal AI processing
+        fileType = 'pdf';
+        fileMimeType = 'application/pdf';
+        const uint8Array = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < uint8Array.length; i++) {
+          binary += String.fromCharCode(uint8Array[i]);
+        }
+        fileBase64 = btoa(binary);
+      } else {
+        // For CSV/text files, decode as text
+        fileType = 'csv';
+        const textDecoder = new TextDecoder();
+        fileContent = textDecoder.decode(arrayBuffer);
+      }
     } else {
       // Handle JSON request with CSV content
       const body = await req.json();
@@ -42,7 +57,6 @@ serve(async (req) => {
       fileType = body.fileType || 'csv';
     }
 
-    // Use AI to extract product information
     const systemPrompt = `You are a data extraction assistant for an electrical supplies business. Extract product information from wholesale price lists and catalogs.
 
 Extract the following fields for each product:
@@ -75,6 +89,35 @@ Example format:
   }
 ]`;
 
+    // Build messages based on file type
+    let messages: any[];
+    if (fileType === 'pdf' && fileBase64) {
+      // Use multimodal input for PDFs
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { 
+          role: 'user', 
+          content: [
+            { type: 'text', text: 'Extract all product information from this wholesale price list PDF document.' },
+            { 
+              type: 'image_url', 
+              image_url: { 
+                url: `data:${fileMimeType};base64,${fileBase64}` 
+              } 
+            }
+          ]
+        }
+      ];
+    } else {
+      // Text-based input for CSV
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Extract product information from this CSV file content:\n\n${fileContent.substring(0, 50000)}` }
+      ];
+    }
+
+    console.log(`Processing ${fileType} file with ${fileType === 'pdf' ? 'multimodal' : 'text'} input`);
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -83,11 +126,7 @@ Example format:
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extract product information from this ${fileType.toUpperCase()} file content:\n\n${fileContent.substring(0, 50000)}` }
-        ],
-        temperature: 0.3,
+        messages,
       }),
     });
 
