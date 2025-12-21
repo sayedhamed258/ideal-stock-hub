@@ -41,13 +41,13 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
 
-    --sidebar-background: 222 47% 11%;
+    --sidebar-background: 161 80% 15%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 161 93% 30%;
-    --sidebar-primary-foreground: 151 80% 95%;
-    --sidebar-accent: 222 32% 18%;
+    --sidebar-primary: 161 93% 40%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 161 70% 22%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 222 32% 18%;
+    --sidebar-border: 161 60% 20%;
     --sidebar-ring: 161 93% 30%;
 
     --success: 142 71% 45%;
