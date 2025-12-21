@@ -42,12 +42,12 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 0 0% 9%;
+    --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 161 93% 30%;
     --sidebar-primary-foreground: 151 80% 95%;
-    --sidebar-accent: 0 0% 32%;
+    --sidebar-accent: 222 32% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 83%;
+    --sidebar-border: 222 32% 18%;
     --sidebar-ring: 161 93% 30%;
 
     --success: 142 71% 45%;
