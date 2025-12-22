@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
+import idealLogo from "@/assets/ideal-electricals-logo-v2.png";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -50,9 +51,16 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
-        <div className="p-6 border-b border-sidebar-border">
-          <h2 className="text-xl font-bold text-sidebar-foreground">IDEAL ELECTRICALS</h2>
-          <p className="text-xs text-sidebar-foreground/70 mt-1">Inventory Management</p>
+        <div className="p-6 border-b border-sidebar-border flex items-center gap-3">
+          <img 
+            src={idealLogo} 
+            alt="IE Logo" 
+            className="w-10 h-10 rounded-md"
+          />
+          <div>
+            <h2 className="text-lg font-bold text-sidebar-foreground">IDEAL ELECTRICALS</h2>
+            <p className="text-xs text-sidebar-foreground/70">Inventory Management</p>
+          </div>
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
