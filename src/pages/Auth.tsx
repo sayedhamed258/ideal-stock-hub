@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Building2 } from "lucide-react";
+import idealLogo from "@/assets/ideal-logo-new.png";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -77,9 +77,11 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Building2 className="w-12 h-12 text-primary" />
-            </div>
+            <img 
+              src={idealLogo} 
+              alt="Ideal Electricals Logo" 
+              className="w-24 h-24 object-contain"
+            />
           </div>
           <CardTitle className="text-2xl font-bold">IDEAL ELECTRICALS</CardTitle>
           <CardDescription>

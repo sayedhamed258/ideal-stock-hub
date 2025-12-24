@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import idealLogo from "@/assets/ideal-electricals-logo-v2.png";
+import idealLogo from "@/assets/ideal-logo-new.png";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
