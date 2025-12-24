@@ -1,5 +1,5 @@
 import { Building2, Mail, MapPin, Phone } from "lucide-react";
-import idealLogo from "@/assets/ideal-electricals-logo-v2.png";
+import idealLogo from "@/assets/ideal-logo-new.png";
 
 export const BusinessHeader = () => {
   return (
