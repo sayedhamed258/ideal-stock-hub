@@ -281,6 +281,9 @@ serve(async (req) => {
     let fileBase64 = '';
     let fileMimeType = '';
 
+    // Maximum file size: 500KB (matching client-side validation)
+    const MAX_FILE_SIZE = 500 * 1024;
+
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       const file = formData.get('file') as File;
@@ -291,6 +294,15 @@ serve(async (req) => {
 
       const fileName = file.name.toLowerCase();
       const arrayBuffer = await file.arrayBuffer();
+      
+      // Server-side file size validation to prevent resource exhaustion
+      if (arrayBuffer.byteLength > MAX_FILE_SIZE) {
+        console.warn(`File size ${arrayBuffer.byteLength} bytes exceeds limit of ${MAX_FILE_SIZE} bytes`);
+        return new Response(
+          JSON.stringify({ error: 'File size exceeds 500KB limit. Please upload a smaller file.' }),
+          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       if (fileName.endsWith('.pdf')) {
         // For PDFs, convert to base64 for multimodal AI processing
@@ -313,6 +325,15 @@ serve(async (req) => {
       const body = await req.json();
       fileContent = body.fileContent;
       fileType = body.fileType || 'csv';
+      
+      // Validate content length for JSON requests as well
+      if (fileContent && fileContent.length > MAX_FILE_SIZE) {
+        console.warn(`Content length ${fileContent.length} exceeds limit of ${MAX_FILE_SIZE}`);
+        return new Response(
+          JSON.stringify({ error: 'File content exceeds 500KB limit. Please upload a smaller file.' }),
+          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
 
