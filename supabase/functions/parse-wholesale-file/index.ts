@@ -1,6 +1,47 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Papa from "https://esm.sh/papaparse@5.5.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
+// Zod schema for validating AI-parsed product data
+const ProductSchema = z.object({
+  name: z.string().min(1).max(500),
+  product_id: z.string().max(100).optional().nullable(),
+  category: z.string().max(200).optional().nullable(),
+  supplier: z.string().max(200).optional().nullable(),
+  purchase_price: z.number().min(0).max(100000000).optional().nullable(),
+  selling_price: z.number().min(0).max(100000000).optional().nullable(),
+  mrp_price: z.number().min(0).max(100000000).optional().nullable(),
+  without_tax_price: z.number().min(0).max(100000000).optional().nullable(),
+  stock_qty: z.number().int().min(0).max(100000000).optional().nullable(),
+  unit: z.string().max(50).optional().nullable(),
+  barcode: z.string().max(100).optional().nullable(),
+  item_code: z.string().max(100).optional().nullable(),
+  description: z.string().max(2000).optional().nullable(),
+  packing_inner: z.string().max(100).optional().nullable(),
+  packing_final_price: z.union([z.string().max(100), z.number().min(0).max(100000000)]).optional().nullable(),
+});
+
+const ProductArraySchema = z.array(ProductSchema);
+
+// Validate and sanitize AI-parsed products
+const validateAndSanitizeProducts = (rawProducts: unknown[]): z.infer<typeof ProductArraySchema> => {
+  const validProducts: z.infer<typeof ProductArraySchema> = [];
+  
+  for (const product of rawProducts) {
+    try {
+      // Parse and validate each product
+      const validated = ProductSchema.parse(product);
+      validProducts.push(validated);
+    } catch (e) {
+      // Skip invalid products but log the issue
+      console.warn('Skipping invalid product:', e instanceof Error ? e.message : 'Unknown validation error');
+    }
+  }
+  
+  return validProducts;
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -270,6 +311,55 @@ serve(async (req) => {
   }
 
   try {
+    // Verify user authentication and role
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.warn('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verify user token and get user
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    
+    if (userError || !user) {
+      console.warn('Invalid or expired token:', userError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user has write permissions (admin or staff role)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'staff'])
+      .limit(1);
+
+    if (roleError || !roleData || roleData.length === 0) {
+      console.warn('User does not have write permissions:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'You do not have permission to import files. Admin or staff role required.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authorized user ${user.id} with role ${roleData[0].role} is processing file`);
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -452,7 +542,7 @@ Example format:
     const aiResponse = data.choices[0].message.content;
 
     // Parse the JSON response
-    let products = [];
+    let rawProducts = [];
     try {
       // Remove markdown code fences if present
       let cleanedResponse = aiResponse
@@ -464,13 +554,27 @@ Example format:
       // Try to extract JSON array from the response
       const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        products = JSON.parse(jsonMatch[0]);
+        rawProducts = JSON.parse(jsonMatch[0]);
       } else {
-        products = JSON.parse(cleanedResponse);
+        rawProducts = JSON.parse(cleanedResponse);
       }
     } catch (e) {
       console.error('Failed to parse AI response:', aiResponse);
       throw new Error('Failed to extract product data. Please ensure the file contains product information.');
+    }
+
+    // Validate and sanitize AI-parsed products with Zod schema
+    if (!Array.isArray(rawProducts)) {
+      console.error('AI response is not an array');
+      throw new Error('Invalid AI response format. Expected an array of products.');
+    }
+
+    const products = validateAndSanitizeProducts(rawProducts);
+    console.log(`Validated ${products.length} products out of ${rawProducts.length} raw products`);
+
+    if (products.length === 0 && rawProducts.length > 0) {
+      console.warn('All products failed validation');
+      throw new Error('Failed to validate product data. Please check the file format.');
     }
 
     return new Response(
