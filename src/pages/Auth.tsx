@@ -77,11 +77,13 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <img 
-              src={idealLogo} 
-              alt="Ideal Electricals Logo" 
-              className="w-24 h-24 object-contain"
-            />
+            <div className="w-24 h-24 rounded-xl bg-primary/10 p-2 flex items-center justify-center shadow-sm border border-border">
+              <img 
+                src={idealLogo} 
+                alt="Ideal Electricals Logo" 
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
           <CardTitle className="text-2xl font-bold">IDEAL ELECTRICALS</CardTitle>
           <CardDescription>
