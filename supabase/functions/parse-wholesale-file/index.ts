@@ -532,14 +532,15 @@ Example format:
         );
       }
       if (response.status === 402) {
+        console.error('AI gateway payment required');
         return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your Lovable AI workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'File processing service unavailable. Please contact support.' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
-      throw new Error('Failed to process file with AI');
+      throw new Error('Failed to process file');
     }
 
     const data = await response.json();
