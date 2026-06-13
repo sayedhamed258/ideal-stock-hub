@@ -97,9 +97,12 @@ export default function Reports() {
               <p className="text-sm text-muted-foreground mt-2">Products below minimum level</p>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section aria-labelledby="breakdown-heading" className="space-y-4">
+          <h2 id="breakdown-heading" className="text-xl font-semibold">Stock Breakdown</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
