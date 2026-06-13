@@ -148,7 +148,8 @@ export default function Reports() {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </section>
       </div>
     </Layout>
   );
