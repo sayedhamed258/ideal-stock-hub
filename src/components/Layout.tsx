@@ -59,7 +59,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="w-10 h-10 rounded-md bg-primary/10 p-1 flex items-center justify-center">
           <img 
             src={idealLogo} 
-            alt="IE Logo" 
+            alt="Ideal Electricals logo" 
             className="w-full h-full object-contain"
           />
         </div>
@@ -106,7 +106,7 @@ export const Layout = ({ children }: LayoutProps) => {
           <div className="w-8 h-8 rounded bg-primary/10 p-0.5 flex items-center justify-center">
             <img 
               src={idealLogo} 
-              alt="IE Logo" 
+              alt="Ideal Electricals logo" 
               className="w-full h-full object-contain"
             />
           </div>
@@ -126,7 +126,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border h-14 flex items-center px-4 gap-3">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-sidebar-foreground">
+              <Button variant="ghost" size="icon" className="text-sidebar-foreground" aria-label="Open navigation menu">
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
@@ -141,11 +141,11 @@ export const Layout = ({ children }: LayoutProps) => {
             <div className="w-8 h-8 rounded bg-primary/10 p-0.5 flex items-center justify-center">
               <img 
                 src={idealLogo} 
-                alt="IE Logo" 
+                alt="Ideal Electricals logo" 
                 className="w-full h-full object-contain"
               />
             </div>
-            <h1 className="text-sm font-bold text-sidebar-foreground">IDEAL ELECTRICALS</h1>
+            <span className="text-sm font-bold text-sidebar-foreground">IDEAL ELECTRICALS</span>
           </div>
         </div>
       )}
