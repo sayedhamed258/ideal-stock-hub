@@ -598,7 +598,7 @@ Example format:
   } catch (error) {
     console.error('Error in parse-wholesale-file function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Failed to process file. Please verify the file and try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
