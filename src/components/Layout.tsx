@@ -59,7 +59,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="w-10 h-10 rounded-md bg-primary/10 p-1 flex items-center justify-center">
           <img 
             src={idealLogo} 
-            alt="IE Logo" 
+            alt="Ideal Electricals logo" 
             className="w-full h-full object-contain"
           />
         </div>
