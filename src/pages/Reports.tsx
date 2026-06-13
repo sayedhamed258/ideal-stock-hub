@@ -67,9 +67,11 @@ export default function Reports() {
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+        <h1 className="text-3xl font-bold">Reports & Analytics — IDEAL ELECTRICALS Inventory</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section aria-labelledby="overview-heading" className="space-y-4">
+          <h2 id="overview-heading" className="text-xl font-semibold">Inventory Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
